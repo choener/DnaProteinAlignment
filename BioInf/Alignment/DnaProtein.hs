@@ -21,6 +21,10 @@ import ADP.Fusion.Table
 import ADP.Fusion.Empty
 import ADP.Fusion.None
 
+import Debug.Trace
+
+
+
 data Monad m => SigDnaPro {-Monad-} m {-NT-} nt {-T-} a c e = SigDnaPro
   {delamino :: nt -> (Z:.():.a) -> nt
   ,lcldel :: nt -> nt
@@ -75,14 +79,14 @@ algScore :: SigDnaPro IO Int Char Char ()
 algScore = SigDnaPro
   { lcldel    = id
   , nilnil    = const 0
-  , delamino  = \z (Z:.():.a)                          -> z + error "delamino"
-  , rf1amino  = \z (Z:.c1:.a)  (Z:.c2:.())             -> z + error "rf1amino"
-  , rf1del    = \z (Z:.c1:.()) (Z:.c2:.())             -> z + error "rf1del"
-  , rf2amino  = \z (Z:.c:.a)                           -> z + error "rf2amino"
-  , rf2del    = \z (Z:.c:.())                          -> z + error "rf2del"
-  , stayamino = \z (Z:.c1:.a)  (Z:.c2:.()) (Z:.c3:.()) -> z + error "stayamino"
-  , staydel   = \z (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> z + error "staydel"
-  , eatdel    = \z (Z:.c:.())                          -> z + error "eatdel"
+  , delamino  = \z (Z:.():.a)                          -> z -1
+  , rf1amino  = \z (Z:.c1:.a)  (Z:.c2:.())             -> z -1
+  , rf1del    = \z (Z:.c1:.()) (Z:.c2:.())             -> z -99999
+  , rf2amino  = \z (Z:.c:.a)                           -> z -2
+  , rf2del    = \z (Z:.c:.())                          -> z -2
+  , stayamino = \z (Z:.c1:.a)  (Z:.c2:.()) (Z:.c3:.()) -> z + if c1==a && c2==a && c3==a then 5 else -1
+  , staydel   = \z (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> z -1
+  , eatdel    = \z (Z:.c:.())                          -> z
   , h         = M.foldl' max (-999999)
   }
 {-# INLINE algScore #-}
@@ -115,7 +119,7 @@ fillTables dna protein = do
                (mTbl (Z:.EmptyT:.EmptyT) f2p')
                (mTbl (Z:.EmptyT:.EmptyT) lp')
                (mTbl (Z:.EmptyT:.EmptyT) rp')
-               (chr dna :: GChr Char Char) (chr protein :: GChr Char Char)
+               (chr protein :: GChr Char Char) (chr dna :: GChr Char Char)
                Empty
   f0p <- freeze f0p'
   f1p <- freeze f1p'
@@ -135,7 +139,7 @@ fillFive ( (MTbl _ tf0p, f_f0p)
          ) = do
   let (_,Z:.PointL(0:.nD):.PointL(0:.nP)) = boundsM tf0p
   forM_ [0 .. nD] $ \k -> forM_ [0 .. nP] $ \l -> do
-    let i = (Z:.pointL 0 nD:.pointL 0 nP)
+    let i = (Z:.pointL 0 k:.pointL 0 l)
     f_f0p i >>= writeM tf0p i
     f_f1p i >>= writeM tf1p i
     f_f2p i >>= writeM tf2p i
