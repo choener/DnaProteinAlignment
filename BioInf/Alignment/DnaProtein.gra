@@ -1,19 +1,20 @@
-Grammar: glocal
+Grammar: DNAglocal
 N: F{3}
-N: G
-N: Z
+N: R
+N: L
 T: c
-E: e
-S: Z
-[F{i},P] -> [G,P] [c,e]
-[G,P]    -> [G,P] [c,e]
-[Z,P]    -> [c,e] [Z,P]
-[Z,P]    -> [F{i},P]
+T: e
+S: R
+R    -> eat <<< R c
+R    -> lcl <<< F{i}
+F{i} -> lcl <<< L
+L    -> eat <<< L c
+L    -> nil <<< e
 //
 
 Grammar: DNA
-NT: F{3}
-T:  c
+N: F{3}
+T: c
 F{i} -> stay <<< F{i}   c c c
 F{i} ->  rf1 <<< F{i+1} c c
 F{i} ->  rf2 <<< F{i+2} c
@@ -21,36 +22,37 @@ F{i} ->  del <<< F{i}
 //
 
 Grammar: DNAdone
-NT: F{3}
-T:  empty
-F{i} -> nil <<< empty
+N: F{3}
+T: e
+F{i} -> nil <<< e
 //
 
 Grammar: DNAstand
-NT: F{3}
+N: F{3}
 F{i} -> del <<< F{i}
 //
 
 Grammar: PRO
-NT: P
-T:  a
-T:  empty
+N: P
+T: a
+T: e
 P -> amino <<< P a
 P -> del   <<< P
 //
 
 Grammar: PROdone
-NT: P
-T:  empty
-P -> nil <<< empty
+N: P
+T: e
+S: P
+P -> nil <<< e
 //
 
 Grammar: PROstand
-NT: P
+N: P
 P -> del <<< P
 //
 
-Product: DnaDnaPro
-DNA >< DNA >< PRO   +   DNAdone >< DNAdone >< PROdone   -   DNAstand >< DNAstand >< PROstand
+Product: DnaPro
+DNA >< PRO   +   DNAglocal >< PROdone   +   DNAdone >< PROdone   -   DNAstand >< PROstand
 //
 
