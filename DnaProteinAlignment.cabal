@@ -54,8 +54,8 @@ library
   build-depends:
     base >= 4 && < 5,
     ADPfusion       >= 0.2.0   ,
-    FormalGrammars  >= 0.0.0.1 ,
-    GrammarProducts >= 9.9.9.9 ,
+--    FormalGrammars  >= 0.0.0.1 ,
+--    GrammarProducts >= 9.9.9.9 ,
     PrimitiveArray  >= 0.5.1.0
   exposed-modules:
     BioInf.Alignment.DnaProtein
