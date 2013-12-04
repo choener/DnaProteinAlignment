@@ -56,7 +56,9 @@ library
     ADPfusion       >= 0.2.0   ,
 --    FormalGrammars  >= 0.0.0.1 ,
 --    GrammarProducts >= 9.9.9.9 ,
-    PrimitiveArray  >= 0.5.1.0
+    PrimitiveArray  >= 0.5.1.0 ,
+    repa ,
+    vector
   exposed-modules:
     BioInf.Alignment.DnaProtein
   ghc-options:
