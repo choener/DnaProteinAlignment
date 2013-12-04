@@ -25,7 +25,7 @@ import Debug.Trace
 
 
 
-data Monad m => SigDnaPro {-Monad-} m {-NT-} nt {-T-} a c e = SigDnaPro
+data Monad m => SigDnaPro {-Monad-} m {-NT-} nt r {-T-} a c e = SigDnaPro
   {delamino :: nt -> (Z:.():.a) -> nt
   ,lcldel :: nt -> nt
   ,nilnil :: (Z:.e:.e) -> nt
@@ -36,7 +36,7 @@ data Monad m => SigDnaPro {-Monad-} m {-NT-} nt {-T-} a c e = SigDnaPro
   ,stayamino :: nt -> (Z:.c:.a) -> (Z:.c:.()) -> (Z:.c:.()) -> nt
   ,staydel :: nt -> (Z:.c:.()) -> (Z:.c:.()) -> (Z:.c:.()) -> nt
   ,eatdel :: nt -> (Z:.c:.()) -> nt
-  ,h :: M.Stream m nt -> m nt}
+  ,h :: M.Stream m nt -> m r}
 
 grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
   ((_F0P
@@ -75,7 +75,7 @@ grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
 
 -- |
 
-algScore :: SigDnaPro IO Int Char Char ()
+algScore :: SigDnaPro IO Int Int Char Char ()
 algScore = SigDnaPro
   { lcldel    = id
   , nilnil    = const 0
@@ -91,12 +91,29 @@ algScore = SigDnaPro
   }
 {-# INLINE algScore #-}
 
+algPretty :: Monad m => SigDnaPro m (String,String) (M.Stream m (String,String)) Char Char ()
+algPretty = SigDnaPro
+  { lcldel = id
+  , nilnil = const ([],[])
+  , delamino = \(x,y) (Z:.():.a) -> (x++" ",y++[a])
+  , rf1amino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) -> (x++[c1,c2],y++[a,' '])
+  , rf1del   = \(x,y) (Z:.c1:.()) (Z:.c2:.()) -> (x++[c1,c2],y++"  ")
+  , rf2amino = \(x,y) (Z:.c:.a) -> (x++[c],y++[a])
+  , rf2del   = \(x,y) (Z:.c:.()) -> (x++[c],y++" ")
+  , stayamino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) (Z:.c3:.()) -> (x++[c1,c2,c3],y++[a,' ',' '])
+  , staydel = \(x,y) (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> (x++[c1,c2,c3],y++"   ")
+  , eatdel = \(x,y) (Z:.c:.()) -> (x++[c],y++" ")
+  , h = return . id
+  }
+
 -- |
 
-dnaProtein dna protein = ( _RP ! (Z:.pointL 0 nD:.pointL 0 nP), [] ) where
+dnaProtein dna' protein' = ( _RP ! (Z:.pointL 0 nD:.pointL 0 nP), () ) where
   (_F0P, _F1P, _F2P, _LP, _RP) = unsafePerformIO $ fillTables dna protein
   nD = V.length dna
   nP = V.length protein
+  dna = V.fromList dna'
+  protein = V.fromList protein'
 
 -- |
 
@@ -146,3 +163,6 @@ fillFive ( (MTbl _ tf0p, f_f0p)
     f_lp  i >>= writeM tlp  i
     f_rp  i >>= writeM trp  i
 
+-- |
+
+backtrack dna protein = undefined

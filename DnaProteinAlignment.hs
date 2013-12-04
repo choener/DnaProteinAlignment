@@ -1,6 +1,11 @@
 
 module Main where
 
+import BioInf.Alignment.DnaProtein
 
 
-main = return ()
+
+main = do
+  dna <- getLine
+  pro <- getLine
+  print $ dnaProtein dna pro

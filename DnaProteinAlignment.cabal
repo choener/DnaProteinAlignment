@@ -67,6 +67,8 @@ executable DnaProteinAlignment
   build-depends:
     cmdargs == 0.10.*
   ghc-options:
+    -O2
+    -fllvm
   main-is:
     DnaProteinAlignment.hs
 
