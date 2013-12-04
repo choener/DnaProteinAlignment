@@ -9,7 +9,6 @@ R    -> eat <<< R c
 R    -> lcl <<< F{i}
 F{i} -> lcl <<< L
 L    -> eat <<< L c
-L    -> nil <<< e
 //
 
 Grammar: DNA
@@ -23,8 +22,12 @@ F{i} ->  del <<< F{i}
 
 Grammar: DNAdone
 N: F{3}
+N: R
+N: L
 T: e
 F{i} -> nil <<< e
+R    -> nil <<< e
+L    -> nil <<< e
 //
 
 Grammar: DNAstand
@@ -53,6 +56,6 @@ P -> del <<< P
 //
 
 Product: DnaPro
-DNA >< PRO   +   DNAglocal >< PROdone   +   DNAdone >< PROdone   -   DNAstand >< PROstand
+DNA >< PRO   +   DNAglocal >< PROstand   +   DNAdone >< PROdone   -   DNAstand >< PROstand
 //
 
