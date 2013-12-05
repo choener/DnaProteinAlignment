@@ -5,6 +5,8 @@ module BioInf.Alignment.DnaProtein where
 
 import Data.Array.Repa.Index
 import qualified Data.Vector.Fusion.Stream.Monadic as M
+import qualified Data.Vector.Fusion.Stream.Monadic
+import Data.Vector.Fusion.Util
 import System.IO.Unsafe
 import qualified Data.Vector.Unboxed as V
 import Control.Monad
@@ -24,7 +26,7 @@ import ADP.Fusion.None
 import Debug.Trace
 
 
-
+{-
 data Monad m => SigDnaPro {-Monad-} m {-NT-} nt r {-T-} a c e = SigDnaPro
   {delamino :: nt -> (Z:.():.a) -> nt
   ,lcldel :: nt -> nt
@@ -72,10 +74,59 @@ grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
   ,(_LP,eatdel <<< _LP % (T:!c:!None) ||| nilnil <<< (T:!e:!e) ... h)
   ,(_RP,eatdel <<< _RP % (T:!c:!None) ||| lcldel <<< _F0P ||| lcldel <<< _F1P ||| lcldel <<< _F2P ||| nilnil <<< (T:!e:!e) ... h))
 {-# INLINE grammarDnaPro #-}
+-}
+
+
+data SigDnaPro {-Monad-} m {-NT-} nt hResT {-T-} a c e = SigDnaPro
+  {delamino :: nt -> (Z:.():.a) -> nt
+  ,lcldel :: nt -> nt
+  ,nilnil :: (Z:.e:.e) -> nt
+  ,rf1amino :: nt -> (Z:.c:.a) -> (Z:.c:.()) -> nt
+  ,rf1del :: nt -> (Z:.c:.()) -> (Z:.c:.()) -> nt
+  ,rf2amino :: nt -> (Z:.c:.a) -> nt
+  ,rf2del :: nt -> (Z:.c:.()) -> nt
+  ,stayamino :: nt -> (Z:.c:.a) -> (Z:.c:.()) -> (Z:.c:.()) -> nt
+  ,staydel :: nt -> (Z:.c:.()) -> (Z:.c:.()) -> (Z:.c:.()) -> nt
+  ,eatdel :: nt -> (Z:.c:.()) -> nt
+  ,h :: Data.Vector.Fusion.Stream.Monadic.Stream m nt -> m hResT}
+grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
+  ((_F0P
+   ,delamino <<< _F0P % (T:!None:!a)
+     ||| lcldel <<< _LP
+     ||| nilnil <<< (T:!e:!e)
+     ||| rf1amino <<< _F1P % (T:!c:!a) % (T:!c:!None)
+     ||| rf1del <<< _F1P % (T:!c:!None) % (T:!c:!None)
+     ||| rf2amino <<< _F2P % (T:!c:!a)
+     ||| rf2del <<< _F2P % (T:!c:!None)
+     ||| stayamino <<< _F0P % (T:!c:!a) % (T:!c:!None) % (T:!c:!None)
+     ||| staydel <<< _F0P % (T:!c:!None) % (T:!c:!None) % (T:!c:!None) ... h)
+  ,(_F1P
+   ,delamino <<< _F1P % (T:!None:!a)
+     ||| lcldel <<< _LP
+     ||| nilnil <<< (T:!e:!e)
+     ||| rf1amino <<< _F2P % (T:!c:!a) % (T:!c:!None)
+     ||| rf1del <<< _F2P % (T:!c:!None) % (T:!c:!None)
+     ||| rf2amino <<< _F0P % (T:!c:!a)
+     ||| rf2del <<< _F0P % (T:!c:!None)
+     ||| stayamino <<< _F1P % (T:!c:!a) % (T:!c:!None) % (T:!c:!None)
+     ||| staydel <<< _F1P % (T:!c:!None) % (T:!c:!None) % (T:!c:!None) ... h)
+  ,(_F2P
+   ,delamino <<< _F2P % (T:!None:!a)
+     ||| lcldel <<< _LP
+     ||| nilnil <<< (T:!e:!e)
+     ||| rf1amino <<< _F0P % (T:!c:!a) % (T:!c:!None)
+     ||| rf1del <<< _F0P % (T:!c:!None) % (T:!c:!None)
+     ||| rf2amino <<< _F1P % (T:!c:!a)
+     ||| rf2del <<< _F1P % (T:!c:!None)
+     ||| stayamino <<< _F2P % (T:!c:!a) % (T:!c:!None) % (T:!c:!None)
+     ||| staydel <<< _F2P % (T:!c:!None) % (T:!c:!None) % (T:!c:!None) ... h)
+  ,(_LP,eatdel <<< _LP % (T:!c:!None) ||| nilnil <<< (T:!e:!e) ... h)
+  ,(_RP,eatdel <<< _RP % (T:!c:!None) ||| lcldel <<< _F0P ||| lcldel <<< _F1P ||| lcldel <<< _F2P ||| nilnil <<< (T:!e:!e) ... h))
+
 
 -- |
 
-algScore :: SigDnaPro IO Int Int Char Char ()
+algScore :: Monad m => SigDnaPro m Int Int Char Char ()
 algScore = SigDnaPro
   { lcldel    = id
   , nilnil    = const 0
@@ -108,12 +159,81 @@ algPretty = SigDnaPro
 
 -- |
 
-dnaProtein dna' protein' = ( _RP ! (Z:.pointL 0 nD:.pointL 0 nP), () ) where
-  (_F0P, _F1P, _F2P, _LP, _RP) = unsafePerformIO $ fillTables dna protein
+(<**) f g = SigDnaPro
+  {delamino = \(a,aN) b -> (_Fdelamino a b, aN >>= return . M.map (\a -> _Gdelamino a b))
+  ,lcldel = \(a,aN) -> (_Flcldel a, aN >>= return . M.map (\a -> _Glcldel a))
+  ,nilnil = \a -> (_Fnilnil a, return $ M.singleton (_Gnilnil a))
+  ,rf1amino = \(a,aN) b c -> (_Frf1amino a b c, aN >>= return . M.map (\a -> _Grf1amino a b c))
+  ,rf1del = \(a,aN) b c -> (_Frf1del a b c, aN >>= return . M.map (\a -> _Grf1del a b c))
+  ,rf2amino = \(a,aN) b -> (_Frf2amino a b, aN >>= return . M.map (\a -> _Grf2amino a b))
+  ,rf2del = \(a,aN) b -> (_Frf2del a b, aN >>= return . M.map (\a -> _Grf2del a b))
+  ,stayamino = \(a,aN) b c d -> (_Fstayamino a b c d, aN >>= return . M.map (\a -> _Gstayamino a b c d))
+  ,staydel = \(a,aN) b c d -> (_Fstaydel a b c d, aN >>= return . M.map (\a -> _Gstaydel a b c d))
+  ,eatdel = \(a,aN) b -> (_Featdel a b, aN >>= return . M.map (\a -> _Geatdel a b))
+  ,h = \xs -> do
+    hfs <- _Fh . Data.Vector.Fusion.Stream.Monadic.map fst $ xs
+    let phfs = Data.Vector.Fusion.Stream.Monadic.concatMapM snd
+             . Data.Vector.Fusion.Stream.Monadic.filter ((hfs==) . fst) $ xs
+    _Gh phfs}
+  where
+    _Fdelamino = delamino f
+    _Flcldel = lcldel f
+    _Fnilnil = nilnil f
+    _Frf1amino = rf1amino f
+    _Frf1del = rf1del f
+    _Frf2amino = rf2amino f
+    _Frf2del = rf2del f
+    _Fstayamino = stayamino f
+    _Fstaydel = staydel f
+    _Featdel = eatdel f
+    _Fh = h f
+    _Gdelamino = delamino g
+    _Glcldel = lcldel g
+    _Gnilnil = nilnil g
+    _Grf1amino = rf1amino g
+    _Grf1del = rf1del g
+    _Grf2amino = rf2amino g
+    _Grf2del = rf2del g
+    _Gstayamino = stayamino g
+    _Gstaydel = staydel g
+    _Geatdel = eatdel g
+    _Gh = h g
+
+
+-- |
+
+dnaProtein dna' protein' = ( _RP ! (Z:.pointL 0 nD:.pointL 0 nP), bt ) where
+  ts@(_F0P, _F1P, _F2P, _LP, _RP) = unsafePerformIO $ fillTables dna protein
   nD = V.length dna
   nP = V.length protein
   dna = V.fromList dna'
   protein = V.fromList protein'
+  bt = backtrack dna protein ts
+
+-- |
+
+type PPT = PA.Unboxed (Z:.PointL:.PointL) Int
+type BtPPT = DefBtTbl Id (Z:.PointL:.PointL) Int (String,String)
+type FunT = (Z:.PointL:.PointL) -> Id (M.Stream Id (String,String))
+
+backtrack
+  :: V.Vector Char
+  -> V.Vector Char
+  -> ( PPT, PPT, PPT, PPT, PPT )
+  -> [(String,String)]
+backtrack dna protein (f0p, f1p, f2p, lp, rp) = unId . M.toList . unId . f_rp $ Z:.pointL 0 nD:.pointL 0 nP where
+  nD = V.length dna
+  nP = V.length protein
+  ( (_,f_f0p), (_,f_f1p), (_,f_f2p), (_,f_lp ), (_,f_rp ) ) = grammarDnaPro
+        (algScore <** algPretty)
+        (btTbl (Z:.EmptyT:.EmptyT) f0p (f_f0p :: FunT) :: BtPPT)
+        (btTbl (Z:.EmptyT:.EmptyT) f1p (f_f1p :: FunT) :: BtPPT)
+        (btTbl (Z:.EmptyT:.EmptyT) f2p (f_f2p :: FunT) :: BtPPT)
+        (btTbl (Z:.EmptyT:.EmptyT) lp  (f_lp  :: FunT) :: BtPPT)
+        (btTbl (Z:.EmptyT:.EmptyT) rp  (f_rp  :: FunT) :: BtPPT)
+        (chr protein)
+        (chr dna)
+        Empty
 
 -- |
 
@@ -163,6 +283,3 @@ fillFive ( (MTbl _ tf0p, f_f0p)
     f_lp  i >>= writeM tlp  i
     f_rp  i >>= writeM trp  i
 
--- |
-
-backtrack dna protein = undefined

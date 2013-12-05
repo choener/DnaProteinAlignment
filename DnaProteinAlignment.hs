@@ -8,4 +8,6 @@ import BioInf.Alignment.DnaProtein
 main = do
   dna <- getLine
   pro <- getLine
-  print $ dnaProtein dna pro
+  let (s,bs) = dnaProtein dna pro
+  print s
+  mapM_ (\(o,u) -> putStrLn o >> putStrLn u) $ take 1 bs
