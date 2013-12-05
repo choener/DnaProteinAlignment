@@ -1,5 +1,8 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeOperators #-}
+
+{-# OPTIONS_GHC -fno-liberate-case #-}
 
 module BioInf.Alignment.DnaProtein (dnaProtein) where
 
@@ -10,9 +13,11 @@ import Data.Vector.Fusion.Util
 import System.IO.Unsafe
 import qualified Data.Vector.Unboxed as V
 import Control.Monad
+import qualified Data.Array.IArray as A
 
-import Data.PrimitiveArray as PA
-import Data.PrimitiveArray.Zero as PA
+import Biobase.Primary
+import Data.PrimitiveArray as PA hiding (map)
+import Data.PrimitiveArray.Zero as PA hiding (map)
 import Data.Array.Repa.Index.Points
 import ADP.Fusion.Multi
 import ADP.Fusion.Multi.Classes
@@ -22,6 +27,7 @@ import ADP.Fusion.Chr
 import ADP.Fusion.Table
 import ADP.Fusion.Empty
 import ADP.Fusion.None
+import Biobase.SubstMatrix
 
 import Debug.Trace
 
@@ -78,34 +84,40 @@ grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
 
 -- |
 
-algScore :: Monad m => SigDnaPro m Int Int Char Char ()
-algScore = SigDnaPro
+algScore
+  :: Monad m
+  => Nuc3SubstMatrix
+  -> Nuc2SubstMatrix
+  -> Nuc1SubstMatrix
+  -> Int -> Int -> Int -> Int -> Int -> Int
+  -> SigDnaPro m Int Int Char Nuc ()
+algScore n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS = SigDnaPro
   { lcldel    = id
   , nilnil    = const 0
-  , delamino  = \z (Z:.():.a)                          -> z -1
-  , rf1amino  = \z (Z:.c1:.a)  (Z:.c2:.())             -> z -1
-  , rf1del    = \z (Z:.c1:.()) (Z:.c2:.())             -> z -99999
-  , rf2amino  = \z (Z:.c:.a)                           -> z -2
-  , rf2del    = \z (Z:.c:.())                          -> z -2
-  , stayamino = \z (Z:.c1:.a)  (Z:.c2:.()) (Z:.c3:.()) -> z + if c1==a && c2==a && c3==a then 5 else -1
-  , staydel   = \z (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> z -1
+  , delamino  = \z (Z:.():.a)                          -> z + insertAA
+  , rf1amino  = \z (Z:.c1:.a)  (Z:.c2:.())             -> z + n2m A.! (c1,c2,a) + rf1S
+  , rf1del    = \z (Z:.c1:.()) (Z:.c2:.())             -> z + rf1delS
+  , rf2amino  = \z (Z:.c:.a)                           -> z + n1m A.! (c,a) + rf2S
+  , rf2del    = \z (Z:.c:.())                          -> z + rf2delS
+  , stayamino = \z (Z:.c1:.a)  (Z:.c2:.()) (Z:.c3:.()) -> z + n3m A.! (c1,c2,c3,a)
+  , staydel   = \z (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> z + deleteAA
   , eatdel    = \z (Z:.c:.())                          -> z
   , h         = M.foldl' max (-999999)
   }
 {-# INLINE algScore #-}
 
-algPretty :: Monad m => SigDnaPro m (String,String) (M.Stream m (String,String)) Char Char ()
+algPretty :: Monad m => SigDnaPro m (String,String) (M.Stream m (String,String)) Char Nuc ()
 algPretty = SigDnaPro
   { lcldel = id
   , nilnil = const ([],[])
   , delamino = \(x,y) (Z:.():.a) -> (x++"-",y++[a])
-  , rf1amino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) -> (x++[c1,c2],y++[a,'^'])
-  , rf1del   = \(x,y) (Z:.c1:.()) (Z:.c2:.()) -> (x++[c1,c2],y++"--")
-  , rf2amino = \(x,y) (Z:.c:.a) -> (x++[c],y++[a])
-  , rf2del   = \(x,y) (Z:.c:.()) -> (x++[c],y++"-")
-  , stayamino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) (Z:.c3:.()) -> (x++[c1,c2,c3],y++[a,'^','^'])
-  , staydel = \(x,y) (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> (x++[c1,c2,c3],y++"---")
-  , eatdel = \(x,y) (Z:.c:.()) -> (x++[c],y++".")
+  , rf1amino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) -> (x++map fromNuc [c1,c2],y++[a,'^'])
+  , rf1del   = \(x,y) (Z:.c1:.()) (Z:.c2:.()) -> (x++map fromNuc [c1,c2],y++"--")
+  , rf2amino = \(x,y) (Z:.c:.a) -> (x++[fromNuc c],y++[a])
+  , rf2del   = \(x,y) (Z:.c:.()) -> (x++[fromNuc c],y++"-")
+  , stayamino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) (Z:.c3:.()) -> (x++map fromNuc [c1,c2,c3],y++[a,'^','^'])
+  , staydel = \(x,y) (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> (x++map fromNuc [c1,c2,c3],y++"---")
+  , eatdel = \(x,y) (Z:.c:.()) -> (x++[fromNuc c],y++".")
   , h = return . id
   }
 
@@ -154,13 +166,13 @@ algPretty = SigDnaPro
 
 -- |
 
-dnaProtein dna' protein' = ( _RP ! (Z:.pointL 0 nD:.pointL 0 nP), bt ) where
-  ts@(_F0P, _F1P, _F2P, _LP, _RP) = unsafePerformIO $ fillTables dna protein
+dnaProtein n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS dna' protein' = ( _RP ! (Z:.pointL 0 nD:.pointL 0 nP), bt ) where
+  ts@(_F0P, _F1P, _F2P, _LP, _RP) = unsafePerformIO $ fillTables n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS dna protein
   nD = V.length dna
   nP = V.length protein
-  dna = V.fromList dna'
+  dna = mkPrimary dna'
   protein = V.fromList protein'
-  bt = backtrack dna protein ts
+  bt = [] :: [(String,String)] -- backtrack n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS dna protein ts
 {-# NOINLINE dnaProtein #-}
 
 -- |
@@ -169,16 +181,22 @@ type PPT = PA.Unboxed (Z:.PointL:.PointL) Int
 type BtPPT = DefBtTbl Id (Z:.PointL:.PointL) Int (String,String)
 type FunT = (Z:.PointL:.PointL) -> Id (M.Stream Id (String,String))
 
+{-
 backtrack
-  :: V.Vector Char
+  :: Nuc3SubstMatrix
+  -> Nuc2SubstMatrix
+  -> Nuc1SubstMatrix
+  -> Int -> Int -> Int -> Int -> Int -> Int
+  -> V.Vector Nuc
   -> V.Vector Char
   -> ( PPT, PPT, PPT, PPT, PPT )
   -> [(String,String)]
-backtrack dna protein (f0p, f1p, f2p, lp, rp) = unId . M.toList . unId . f_rp $ Z:.pointL 0 nD:.pointL 0 nP where
+backtrack n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS dna protein (f0p, f1p, f2p, lp, rp) =
+  unId . M.toList . unId . f_rp $ Z:.pointL 0 nD:.pointL 0 nP where
   nD = V.length dna
   nP = V.length protein
   ( (_,f_f0p), (_,f_f1p), (_,f_f2p), (_,f_lp ), (_,f_rp ) ) = grammarDnaPro
-        (algScore <** algPretty)
+        (algScore n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS <** algPretty)
         (btTbl (Z:.EmptyT:.EmptyT) f0p (f_f0p :: FunT) :: BtPPT)
         (btTbl (Z:.EmptyT:.EmptyT) f1p (f_f1p :: FunT) :: BtPPT)
         (btTbl (Z:.EmptyT:.EmptyT) f2p (f_f2p :: FunT) :: BtPPT)
@@ -187,14 +205,21 @@ backtrack dna protein (f0p, f1p, f2p, lp, rp) = unId . M.toList . unId . f_rp $ 
         (chr protein)
         (chr dna)
         Empty
+{-# NOINLINE backtrack #-}
+-}
 
 -- |
 
 type Tbl = PA.Unboxed (Z:.PointL:.PointL) Int
 
-fillTables :: V.Vector Char -> V.Vector Char
+fillTables
+  :: Nuc3SubstMatrix
+  -> Nuc2SubstMatrix
+  -> Nuc1SubstMatrix
+  -> Int -> Int -> Int -> Int -> Int -> Int
+  -> V.Vector Nuc -> V.Vector Char
   -> IO ( Tbl, Tbl, Tbl, Tbl, Tbl )
-fillTables dna protein = do
+fillTables !n3m !n2m !n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS dna protein = do
   let nD = V.length dna
   let nP = V.length protein
   f0p' <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) 0
@@ -203,13 +228,13 @@ fillTables dna protein = do
   lp'  <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) 0
   rp'  <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) 0
   fillFive $ grammarDnaPro
-               algScore
+               (algScore n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS)
                (mTbl (Z:.EmptyT:.EmptyT) f0p')
                (mTbl (Z:.EmptyT:.EmptyT) f1p')
                (mTbl (Z:.EmptyT:.EmptyT) f2p')
                (mTbl (Z:.EmptyT:.EmptyT) lp')
                (mTbl (Z:.EmptyT:.EmptyT) rp')
-               (chr protein :: GChr Char Char) (chr dna :: GChr Char Char)
+               (chr protein) (chr dna)
                Empty
   f0p <- freeze f0p'
   f1p <- freeze f1p'
