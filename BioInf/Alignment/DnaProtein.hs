@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeOperators #-}
 
-module BioInf.Alignment.DnaProtein where
+module BioInf.Alignment.DnaProtein (dnaProtein) where
 
 import Data.Array.Repa.Index
 import qualified Data.Vector.Fusion.Stream.Monadic as M
@@ -25,56 +25,6 @@ import ADP.Fusion.None
 
 import Debug.Trace
 
-
-{-
-data Monad m => SigDnaPro {-Monad-} m {-NT-} nt r {-T-} a c e = SigDnaPro
-  {delamino :: nt -> (Z:.():.a) -> nt
-  ,lcldel :: nt -> nt
-  ,nilnil :: (Z:.e:.e) -> nt
-  ,rf1amino :: nt -> (Z:.c:.a) -> (Z:.c:.()) -> nt
-  ,rf1del :: nt -> (Z:.c:.()) -> (Z:.c:.()) -> nt
-  ,rf2amino :: nt -> (Z:.c:.a) -> nt
-  ,rf2del :: nt -> (Z:.c:.()) -> nt
-  ,stayamino :: nt -> (Z:.c:.a) -> (Z:.c:.()) -> (Z:.c:.()) -> nt
-  ,staydel :: nt -> (Z:.c:.()) -> (Z:.c:.()) -> (Z:.c:.()) -> nt
-  ,eatdel :: nt -> (Z:.c:.()) -> nt
-  ,h :: M.Stream m nt -> m r}
-
-grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
-  ((_F0P
-   ,delamino <<< _F0P % (T:!None:!a)
-       ||| lcldel <<< _LP
-     ||| nilnil <<< (T:!e:!e)
-     ||| rf1amino <<< _F1P % (T:!c:!a) % (T:!c:!None)
-     ||| rf1del <<< _F1P % (T:!c:!None) % (T:!c:!None)
-     ||| rf2amino <<< _F2P % (T:!c:!a)
-     ||| rf2del <<< _F2P % (T:!c:!None)
-     ||| stayamino <<< _F0P % (T:!c:!a) % (T:!c:!None) % (T:!c:!None)
-     ||| staydel <<< _F0P % (T:!c:!None) % (T:!c:!None) % (T:!c:!None) ... h)
-  ,(_F1P
-   ,delamino <<< _F1P % (T:!None:!a)
-     ||| lcldel <<< _LP
-     ||| nilnil <<< (T:!e:!e)
-     ||| rf1amino <<< _F2P % (T:!c:!a) % (T:!c:!None)
-     ||| rf1del <<< _F2P % (T:!c:!None) % (T:!c:!None)
-     ||| rf2amino <<< _F0P % (T:!c:!a)
-     ||| rf2del <<< _F0P % (T:!c:!None)
-     ||| stayamino <<< _F1P % (T:!c:!a) % (T:!c:!None) % (T:!c:!None)
-     ||| staydel <<< _F1P % (T:!c:!None) % (T:!c:!None) % (T:!c:!None) ... h)
-  ,(_F2P
-   ,delamino <<< _F2P % (T:!None:!a)
-     ||| lcldel <<< _LP
-     ||| nilnil <<< (T:!e:!e)
-     ||| rf1amino <<< _F0P % (T:!c:!a) % (T:!c:!None)
-     ||| rf1del <<< _F0P % (T:!c:!None) % (T:!c:!None)
-     ||| rf2amino <<< _F1P % (T:!c:!a)
-     ||| rf2del <<< _F1P % (T:!c:!None)
-     ||| stayamino <<< _F2P % (T:!c:!a) % (T:!c:!None) % (T:!c:!None)
-     ||| staydel <<< _F2P % (T:!c:!None) % (T:!c:!None) % (T:!c:!None) ... h)
-  ,(_LP,eatdel <<< _LP % (T:!c:!None) ||| nilnil <<< (T:!e:!e) ... h)
-  ,(_RP,eatdel <<< _RP % (T:!c:!None) ||| lcldel <<< _F0P ||| lcldel <<< _F1P ||| lcldel <<< _F2P ||| nilnil <<< (T:!e:!e) ... h))
-{-# INLINE grammarDnaPro #-}
--}
 
 
 data SigDnaPro {-Monad-} m {-NT-} nt hResT {-T-} a c e = SigDnaPro
@@ -122,6 +72,8 @@ grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
      ||| staydel <<< _F2P % (T:!c:!None) % (T:!c:!None) % (T:!c:!None) ... h)
   ,(_LP,eatdel <<< _LP % (T:!c:!None) ||| nilnil <<< (T:!e:!e) ... h)
   ,(_RP,eatdel <<< _RP % (T:!c:!None) ||| lcldel <<< _F0P ||| lcldel <<< _F1P ||| lcldel <<< _F2P ||| nilnil <<< (T:!e:!e) ... h))
+{-# INLINE grammarDnaPro #-}
+
 
 
 -- |
@@ -146,14 +98,14 @@ algPretty :: Monad m => SigDnaPro m (String,String) (M.Stream m (String,String))
 algPretty = SigDnaPro
   { lcldel = id
   , nilnil = const ([],[])
-  , delamino = \(x,y) (Z:.():.a) -> (x++" ",y++[a])
-  , rf1amino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) -> (x++[c1,c2],y++[a,' '])
-  , rf1del   = \(x,y) (Z:.c1:.()) (Z:.c2:.()) -> (x++[c1,c2],y++"  ")
+  , delamino = \(x,y) (Z:.():.a) -> (x++"-",y++[a])
+  , rf1amino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) -> (x++[c1,c2],y++[a,'^'])
+  , rf1del   = \(x,y) (Z:.c1:.()) (Z:.c2:.()) -> (x++[c1,c2],y++"--")
   , rf2amino = \(x,y) (Z:.c:.a) -> (x++[c],y++[a])
-  , rf2del   = \(x,y) (Z:.c:.()) -> (x++[c],y++" ")
-  , stayamino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) (Z:.c3:.()) -> (x++[c1,c2,c3],y++[a,' ',' '])
-  , staydel = \(x,y) (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> (x++[c1,c2,c3],y++"   ")
-  , eatdel = \(x,y) (Z:.c:.()) -> (x++[c],y++" ")
+  , rf2del   = \(x,y) (Z:.c:.()) -> (x++[c],y++"-")
+  , stayamino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) (Z:.c3:.()) -> (x++[c1,c2,c3],y++[a,'^','^'])
+  , staydel = \(x,y) (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> (x++[c1,c2,c3],y++"---")
+  , eatdel = \(x,y) (Z:.c:.()) -> (x++[c],y++".")
   , h = return . id
   }
 
@@ -209,6 +161,7 @@ dnaProtein dna' protein' = ( _RP ! (Z:.pointL 0 nD:.pointL 0 nP), bt ) where
   dna = V.fromList dna'
   protein = V.fromList protein'
   bt = backtrack dna protein ts
+{-# NOINLINE dnaProtein #-}
 
 -- |
 
@@ -264,6 +217,7 @@ fillTables dna protein = do
   lp  <- freeze lp'
   rp  <- freeze rp'
   return (f0p,f1p,f2p,lp,rp)
+{-# INLINE fillTables #-}
 
 -- type TF = ( MutArr IO Tbl, (Z:.PointL:.PointL) -> IO Int )
 
@@ -282,4 +236,5 @@ fillFive ( (MTbl _ tf0p, f_f0p)
     f_f2p i >>= writeM tf2p i
     f_lp  i >>= writeM tlp  i
     f_rp  i >>= writeM trp  i
+{-# INLINE fillFive #-}
 
