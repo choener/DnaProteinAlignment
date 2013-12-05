@@ -9,7 +9,7 @@ license:        GPL-3
 license-file:   LICENSE
 build-type:     Simple
 stability:      experimental
-cabal-version:  >= 1.6.0
+cabal-version:  >= 1.8.0
 synopsis:
                 Frameshift-aware alignment of protein sequences with DNA sequences
 description:
@@ -54,21 +54,52 @@ library
   build-depends:
     base >= 4 && < 5,
     ADPfusion       >= 0.2.0   ,
---    FormalGrammars  >= 0.0.0.1 ,
---    GrammarProducts >= 9.9.9.9 ,
+    array ,
+    BiobaseBlast    >= 0.0.0.1 ,
+    BiobaseFasta    >= 0.0.1.0 ,
+    BiobaseXNA      >= 0.7.0.2 ,
+    biocore ,
+    bytestring ,
+    cmdargs == 0.10.* ,
+    conduit ,
+    parallel ,
+    dlist ,
     PrimitiveArray  >= 0.5.1.0 ,
     repa ,
+    split ,
     vector
   exposed-modules:
     BioInf.Alignment.DnaProtein
   ghc-options:
+    -O2
+    -fllvm
+    -fsimpl-tick-factor=1000
 
 executable DnaProteinAlignment
   build-depends:
-    cmdargs == 0.10.*
+    base >= 4 && < 5,
+    ADPfusion       >= 0.2.0   ,
+    array ,
+    BiobaseBlast    >= 0.0.0.1 ,
+    BiobaseFasta    >= 0.0.1.0 ,
+    BiobaseXNA      >= 0.7.0.2 ,
+    biocore ,
+    bytestring ,
+    cmdargs == 0.10.* ,
+    conduit ,
+    dlist ,
+    parallel ,
+    DnaProteinAlignment ,
+    PrimitiveArray  >= 0.5.1.0 ,
+    repa ,
+    split ,
+    vector
   ghc-options:
     -O2
     -fllvm
+    -fsimpl-tick-factor=1000
+    -threaded
+    -rtsopts
   main-is:
     DnaProteinAlignment.hs
 
