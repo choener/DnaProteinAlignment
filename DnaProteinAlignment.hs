@@ -47,20 +47,20 @@ data Option = Option
   deriving (Show,Data,Typeable)
 
 option = Option
-  { dna           = def
+  { dna           = def &= help "DNA fasta file to read"
 --  , dnawindow     = 2000
-  , protein       = def
+  , protein       = def &= help "Protein fasta file to read"
 --  , proteinwindow = 10000000
-  , windowMult    =   3
-  , blastMatrix   = def
-  , insertAA      = -50
-  , deleteAA      = -50
-  , rf1S          = -50
-  , rf1delS       = -50
-  , rf2S          = -50
-  , rf2delS       = -50
-  , minScore      = -999999
-  , parallelism   = 16
+  , windowMult    =   3 &= help "window of k nucleotides for each amino acid (actually 2k, as we use sliding windows)"
+  , blastMatrix   = def &= help "Blast matrix (PAM / BLOSUM) to use"
+  , insertAA      = -50 &= help "cost for inserting an amino acid (indel)"
+  , deleteAA      = -50 &= help "cost for deleting an amino acid (indel)"
+  , rf1S          = -50 &= help "cost for aligning only two nucleotides with an AA and frame shifting by 1"
+  , rf1delS       = -50 &= help "cost for deleting two nucleotides and frame shifting by 1"
+  , rf2S          = -50 &= help "cost for aligning only one nucleotide with an AA and frame shifting by 2"
+  , rf2delS       = -50 &= help "cost for deleting a nucleotide and frame shifting by 1"
+  , minScore      = -999999 &= help "display only scores above this threshold"
+  , parallelism   = 16 &= help "maximum parallelism (should be set 2-4x or more of the number of CPUs"
   }
 
 main = do
