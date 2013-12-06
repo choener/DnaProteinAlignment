@@ -13,13 +13,16 @@ cabal-version:  >= 1.8.0
 synopsis:
                 Frameshift-aware alignment of protein sequences with DNA sequences
 description:
-                Perform a "glocal" alignment of a DNA sequence (local) with a
-                protein sequence (global). The alignment includes the
+                Perform a semi-global alignment of a DNA sequence (local) with
+                a protein sequence (global). The alignment includes the
                 possibility of frame shifts.
                 .
                 The dynamic programming algorithm is created automatically from
                 atomic single-tape grammars using our grammar product
                 framework.
+                .
+                Run the program with @+RTS -N -RTS@ for optimal performance
+                when aligning against a genome.
                 .
                 .
                 .
@@ -29,9 +32,9 @@ description:
                 .
                 Christian Höner zu Siederdissen, Ivo L. Hofacker, and Peter F. Stadler
                 .
-                How to Multiply Dynamic Programming Algorithms
+                Product Grammars for Alignment and Folding
                 .
-                TCBB (submitted)
+                submitted
                 .
                 .
                 .
@@ -47,26 +50,24 @@ description:
 
 Extra-Source-Files:
   BioInf/Alignment/DnaProtein.gra
-
-
+  changelog
 
 library
   build-depends:
-    base >= 4 && < 5,
-    ADPfusion       >= 0.2.0   ,
-    array ,
-    BiobaseBlast    >= 0.0.0.1 ,
-    BiobaseFasta    >= 0.0.1.0 ,
-    BiobaseXNA      >= 0.7.0.2 ,
-    biocore ,
-    bytestring ,
-    cmdargs == 0.10.* ,
-    conduit ,
-    parallel ,
-    dlist ,
-    PrimitiveArray  >= 0.5.1.0 ,
-    repa ,
-    split ,
+    base >= 4 && < 5            ,
+    ADPfusion       >= 0.2.0.3  ,
+    array                       ,
+    BiobaseBlast    >= 0.0.0.1  ,
+    BiobaseFasta    >= 0.0.1.0  ,
+    BiobaseXNA      >= 0.7.0.2  ,
+    biocore                     ,
+    bytestring                  ,
+    conduit                     ,
+    dlist                       ,
+    parallel                    ,
+    PrimitiveArray  >= 0.5.1.0  ,
+    repa                        ,
+    split                       ,
     vector
   exposed-modules:
     BioInf.Alignment.DnaProtein
@@ -77,23 +78,7 @@ library
 
 executable DnaProteinAlignment
   build-depends:
-    base >= 4 && < 5,
-    ADPfusion       >= 0.2.0   ,
-    array ,
-    BiobaseBlast    >= 0.0.0.1 ,
-    BiobaseFasta    >= 0.0.1.0 ,
-    BiobaseXNA      >= 0.7.0.2 ,
-    biocore ,
-    bytestring ,
-    cmdargs == 0.10.* ,
-    conduit ,
-    dlist ,
-    parallel ,
-    DnaProteinAlignment ,
-    PrimitiveArray  >= 0.5.1.0 ,
-    repa ,
-    split ,
-    vector
+    cmdargs == 0.10.*
   ghc-options:
     -O2
     -fllvm
@@ -102,8 +87,6 @@ executable DnaProteinAlignment
     -rtsopts
   main-is:
     DnaProteinAlignment.hs
-
-
 
 source-repository head
   type: git
