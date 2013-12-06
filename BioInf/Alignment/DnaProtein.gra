@@ -1,4 +1,4 @@
-Grammar: DNAglocal
+Grammar: DNAlocal
 N: F{3}
 N: R
 N: L
@@ -56,6 +56,6 @@ P -> del <<< P
 //
 
 Product: DnaPro
-DNA >< PRO   +   DNAglocal >< PROstand   +   DNAdone >< PROdone   -   DNAstand >< PROstand
+DNA >< PRO   +   DNAlocal >< PROstand   +   DNAdone >< PROdone   -   DNAstand >< PROstand
 //
 
