@@ -37,18 +37,37 @@ algPretty :: Monad m => SigDnaPro m (DList Char,DList Char) (M.Stream m (DList C
 algPretty = SigDnaPro
   { lcldel = id
   , nilnil = const (empty,empty)
-  , delamino = \(x,y) (Z:.():.a) -> (x `snoc` '-',y `snoc` a)
-  , rf1amino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) -> (x `appendL` map fromNuc [c1, c2],y `appendL` [a,'^'])
-  , rf1del   = \(x,y) (Z:.c1:.()) (Z:.c2:.()) -> (x `snoc` fromNuc c1 `snoc` fromNuc c2,y `appendL` "--")
-  , rf2amino = \(x,y) (Z:.c:.a) -> (x `snoc` fromNuc c,y `snoc` a)
-  , rf2del   = \(x,y) (Z:.c:.()) -> (x `snoc` fromNuc c,y `snoc` '-')
-  , stayamino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) (Z:.c3:.()) -> (x `appendL` map fromNuc [c1,c2,c3],y `appendL` [a,'^','^'])
-  , staydel = \(x,y) (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> (x `appendL` map fromNuc [c1,c2,c3],y `appendL` "---")
-  , eatdel = \(x,y) (Z:.c:.()) -> (x `snoc` fromNuc c,y `snoc` '.')
+  , delamino = \(x,y) (Z:.():.a) -> ( x `appendL` "---"
+                                    , y `snocA` a
+                                    )
+  , rf1amino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) -> ( appendNL x [c1, c2] "-"
+                                                , y `snocA` a
+                                                )
+  , rf1del   = \(x,y) (Z:.c1:.()) (Z:.c2:.()) -> ( appendNL x [c1,c2] "-"
+                                                 , y `snocA` '-'
+                                                 )
+  , rf2amino = \(x,y) (Z:.c:.a) -> ( appendNL x [c] "--"
+                                   , y `snocA` a
+                                   )
+  , rf2del   = \(x,y) (Z:.c:.()) -> ( appendNL x [c] "--"
+                                    , y `snocA` '-'
+                                    )
+  , stayamino = \(x,y) (Z:.c1:.a) (Z:.c2:.()) (Z:.c3:.()) -> ( appendNL x [c1,c2,c3] ""
+                                                             , y `snocA` a
+                                                             )
+  , staydel = \(x,y) (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> ( appendNL x [c1,c2,c3] ""
+                                                            , y `snocA` '-'
+                                                            )
+  , eatdel = \(x,y) (Z:.c:.()) -> ( x `snoc` fromNuc c
+                                  , y `snoc` '.'
+                                  )
   , h = return . id
   }
 
+appendNL :: DList Char -> [Nuc] -> String -> DList Char
+appendNL l ns cs = (l `append` (fromList $ map fromNuc ns)) `append` (fromList cs)
 appendL l r = l `append` fromList r
+snocA   y a = y `append` fromList [a,' ',' ']
 
 -- |
 

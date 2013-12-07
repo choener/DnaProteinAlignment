@@ -53,8 +53,8 @@ option = Option
 --  , proteinwindow = 10000000
   , windowMult    =   3 &= help "window of k nucleotides for each amino acid (actually 2k, as we use sliding windows)"
   , blastMatrix   = def &= help "Blast matrix (PAM / BLOSUM) to use"
-  , insertAA      = -50 &= help "cost for inserting an amino acid (indel)"
-  , deleteAA      = -50 &= help "cost for deleting an amino acid (indel)"
+  , insertAA      =  -5 &= help "cost for inserting an amino acid (indel)"
+  , deleteAA      =  -5 &= help "cost for deleting an amino acid (indel)"
   , rf1S          = -50 &= help "cost for aligning only two nucleotides with an AA and frame shifting by 1"
   , rf1delS       = -50 &= help "cost for deleting two nucleotides and frame shifting by 1"
   , rf2S          = -50 &= help "cost for aligning only one nucleotide with an AA and frame shifting by 2"
@@ -91,7 +91,7 @@ main = do
         printf "Score: %d\n" s
         if null bs then putStrLn "NO ALIGNMENT?" else do
           let tt = length . takeWhile (/='.') . drop ll . toList . snd $ head bs
-              os = chunksOf 100 . take tt . drop ll . toList . fst $ head bs
-              us = chunksOf 100 . take tt . drop ll . toList . snd $ head bs
+              os = chunksOf 90 . take tt . drop ll . toList . fst $ head bs
+              us = chunksOf 90 . take tt . drop ll . toList . snd $ head bs
           zipWithM_ (\o u -> putStrLn o >> putStrLn u) os us
 
