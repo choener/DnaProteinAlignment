@@ -88,7 +88,7 @@ main = do
                 (B.unpack $ _identifier p)
                 (unOff $ _offset p)
         printf "DNA length: %d Protein length: %d\n" (B.length inpD) (B.length $ _fasta p)
-        printf "Score: %d\n" s
+        printf "Score: %d   Length-adjusted: %.2f\n" s (fromIntegral s / fromIntegral (B.length $ _fasta p) :: Double)
         if null bs then putStrLn "NO ALIGNMENT?" else do
           let tt = length . takeWhile (/='.') . drop ll . toList . snd $ head bs
               os = chunksOf 90 . take tt . drop ll . toList . fst $ head bs
