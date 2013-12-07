@@ -18,6 +18,7 @@ import Bio.Core.Sequence (Offset (..))
 import Data.List.Split (chunksOf)
 import Control.Parallel.Strategies
 import Data.DList (toList)
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import Biobase.Fasta
 import Biobase.Fasta.Import
@@ -26,6 +27,7 @@ import Biobase.SubstMatrix.Import
 import Biobase.Primary
 
 import BioInf.Alignment.DnaProtein
+import BioInf.Alignment.DnaProtein.Pretty
 
 
 
@@ -85,7 +87,7 @@ main = do
     forM_ (xs `using` parBuffer parallelism (evalTuple5 r0 r0 r0 r0 (evalTuple2 rdeepseq r0))) $ \(d,inpD,offD,p,(s,bs)) -> do
       let sa :: Double = fromIntegral s / fromIntegral (B.length $ _fasta p) :: Double
       when (s>=minScore && sa>=minadjScore) $ do
-        let ll = if null bs then 0 else length . takeWhile (=='.') . toList . snd $ head bs
+        let ll = if null bs then 0 else length . takeWhile isLOC . toList . head $ bs
         printf "DNA: %s @ %d   |||   Protein: %s @ %d\n"
                 (B.unpack $ _identifier d)
                 (offD + fromIntegral ll)
@@ -94,8 +96,25 @@ main = do
         printf "DNA length: %d Protein length: %d\n" (B.length inpD) (B.length $ _fasta p)
         printf "Score: %d   Length-adjusted: %.2f\n" s sa
         if null bs then putStrLn "NO ALIGNMENT?" else do
-          let tt = length . takeWhile (/='.') . drop ll . toList . snd $ head bs
-              os = chunksOf 90 . take tt . drop ll . toList . fst $ head bs
-              us = chunksOf 90 . take tt . drop ll . toList . snd $ head bs
-          zipWithM_ (\o u -> putStrLn o >> putStrLn u) os us
+          let tt = length . takeWhile isPPS . drop ll . toList . head $ bs
+              cs = chunksOf 30 . take tt . drop ll . toList . head $ bs
+          mapM_ (PP.putDoc . pps2doc) cs
+
+pps2doc :: [PPS] -> PP.Doc
+pps2doc xs = us PP.<$> os PP.<$> PP.empty where
+  us = PP.hcat $ map upper xs
+  os = PP.hcat $ map lower xs
+  upper (PPS cs as  k) =           colorize k . PP.text . take 3 $ map fromNuc cs ++ repeat '-'
+  upper (FRS cs as  k) = PP.underline . PP.bold . colorize k . PP.text . take 3 $ map fromNuc cs ++ repeat '-'
+  upper (LOC c      k) =           colorize k . PP.text          $ [fromNuc c]
+  lower (PPS cs []  k) =           colorize k . PP.text          $ "-  "
+  lower (PPS cs [a] k) =           colorize k . PP.text . take 3 $ [a]            ++ repeat ' '
+  lower (FRS cs [a] k) = PP.bold . colorize k . PP.text . take 3 $ [a]            ++ repeat ' '
+  lower (LOC c      k) =           colorize k . PP.text          $ " "
+  colorize k
+    | k>5       = PP.cyan
+    | k>0       = PP.blue
+    | k<(-5)    = PP.red
+    | k<0       = PP.yellow
+    | otherwise = id
 

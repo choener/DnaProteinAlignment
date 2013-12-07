@@ -2,15 +2,16 @@
 
 {-# OPTIONS_GHC -fno-liberate-case -O0 #-}
 
-module BioInf.Alignment.DnaProtein.Pretty (backtrack) where
+module BioInf.Alignment.DnaProtein.Pretty (backtrack,PPS(..),isLOC,isPPS) where
 
-import Data.Array.Repa.Index
-import qualified Data.Vector.Fusion.Stream.Monadic as M
+import           Control.Monad
+import           Data.Array.Repa.Index
+import           Data.Vector.Fusion.Util
+import qualified Data.Array.IArray as A
 import qualified Data.Vector.Fusion.Stream.Monadic
-import Data.Vector.Fusion.Util
-import System.IO.Unsafe
+import qualified Data.Vector.Fusion.Stream.Monadic as M
 import qualified Data.Vector.Unboxed as V
-import Control.Monad
+import           System.IO.Unsafe
 import qualified Data.Array.IArray as A
 
 import Biobase.Primary
@@ -62,12 +63,42 @@ algPretty = SigDnaPro
                                   , y `snoc` '.'
                                   )
   , h = return . id
-  }
+  } where
+      appendNL l ns cs = (l `append` (fromList $ map fromNuc ns)) `append` (fromList cs)
+      appendL l r = l `append` fromList r
+      snocA   y a = y `append` fromList [a,' ',' ']
 
-appendNL :: DList Char -> [Nuc] -> String -> DList Char
-appendNL l ns cs = (l `append` (fromList $ map fromNuc ns)) `append` (fromList cs)
-appendL l r = l `append` fromList r
-snocA   y a = y `append` fromList [a,' ',' ']
+data PPS
+  = PPS ![Nuc] ![Char] !Int
+  | FRS ![Nuc] ![Char] !Int
+  | LOC !Nuc           !Int
+  deriving (Eq,Ord,Show)
+
+isLOC (LOC _   _) = True
+isLOC _           = False
+
+isPPS (LOC _   _) = False
+isPPS _           = True
+
+algPPscore :: Monad m
+  => Nuc3SubstMatrix
+  -> Nuc2SubstMatrix
+  -> Nuc1SubstMatrix
+  -> Int -> Int -> Int -> Int -> Int -> Int
+  -> SigDnaPro m (DList PPS) (M.Stream m (DList PPS)) Char Nuc ()
+algPPscore n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS = SigDnaPro
+  { lcldel = id
+  , nilnil = const empty
+  , delamino = \x (Z:.():.a) -> x `snoc` PPS [] [a] 0
+  , rf1amino = \x (Z:.c1:.a) (Z:.c2:.()) -> x `snoc` FRS [c1,c2] [a] (n2m A.! (c1,c2,a))
+  , rf1del   = \x (Z:.c1:.()) (Z:.c2:.()) -> x `snoc` PPS [c1,c2] [] 0
+  , rf2amino = \x (Z:.c:.a) -> x `snoc` FRS [c] [a] (n1m A.! (c,a))
+  , rf2del   = \x (Z:.c:.()) -> x `snoc` PPS [c] [] 0
+  , stayamino = \x (Z:.c1:.a) (Z:.c2:.()) (Z:.c3:.()) -> x `snoc` PPS [c1,c2,c3] [a] (n3m A.! (c1,c2,c3,a))
+  , staydel = \x (Z:.c1:.()) (Z:.c2:.()) (Z:.c3:.()) -> x `snoc` PPS [c1,c2,c3] [] 0
+  , eatdel = \x (Z:.c:.()) -> x `snoc` LOC c 0
+  , h = return . id
+  } where
 
 -- |
 
@@ -119,13 +150,16 @@ backtrack
   -> V.Vector Nuc
   -> V.Vector Char
   -> ( PPT, PPT, PPT, PPT, PPT )
-  -> [(DList Char,DList Char)]
+  -> [DList PPS] -- [(DList Doc,DList Doc)]
 backtrack n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS dna protein (f0p, f1p, f2p, lp, rp) =
   unId . M.toList . unId . f_rp $ Z:.pointL 0 nD:.pointL 0 nP where
   nD = V.length dna
   nP = V.length protein
   ( (_,f_f0p), (_,f_f1p), (_,f_f2p), (_,f_lp ), (_,f_rp ) ) = grammarDnaPro
-        (algScore n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS <** algPretty)
+        (algScore n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS
+        <**
+        algPPscore n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS
+        )
         (btTbl (Z:.EmptyT:.EmptyT) f0p (f_f0p :: FunT) :: BtPPT)
         (btTbl (Z:.EmptyT:.EmptyT) f1p (f_f1p :: FunT) :: BtPPT)
         (btTbl (Z:.EmptyT:.EmptyT) f2p (f_f2p :: FunT) :: BtPPT)
@@ -135,4 +169,7 @@ backtrack n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS dna protein (f
         (chr dna)
         Empty
 {-# NOINLINE backtrack #-}
+
+type BtPPT = DefBtTbl Id (Z:.PointL:.PointL) Int (DList PPS) -- (DList Doc,DList Doc)
+type FunT = (Z:.PointL:.PointL) -> Id (M.Stream Id (DList PPS)) -- (DList Doc,DList Doc))
 

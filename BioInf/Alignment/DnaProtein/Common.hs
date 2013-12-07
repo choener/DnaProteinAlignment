@@ -81,8 +81,6 @@ grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
 {-# INLINE grammarDnaPro #-}
 
 type PPT = PA.Unboxed (Z:.PointL:.PointL) Int
-type BtPPT = DefBtTbl Id (Z:.PointL:.PointL) Int (DList Char,DList Char)
-type FunT = (Z:.PointL:.PointL) -> Id (M.Stream Id (DList Char,DList Char))
 type Tbl = PA.Unboxed (Z:.PointL:.PointL) Int
 
 

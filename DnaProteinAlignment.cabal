@@ -54,6 +54,7 @@ Extra-Source-Files:
 
 library
   build-depends:
+    ansi-wl-pprint              ,
     base >= 4 && < 5            ,
     cmdargs == 0.10.*           ,
     ADPfusion       >= 0.2.0.3  ,
@@ -79,6 +80,7 @@ library
 
 executable DnaProteinAlignment
   build-depends:
+    ansi-wl-pprint              ,
     base >= 4 && < 5            ,
     cmdargs == 0.10.*           ,
     ADPfusion       >= 0.2.0.3  ,
