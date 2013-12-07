@@ -81,15 +81,17 @@ main = do
              ]
     forM_ (xs `using` parBuffer parallelism (evalTuple5 r0 r0 r0 r0 (evalTuple2 rdeepseq r0))) $ \(d,inpD,offD,p,(s,bs)) -> do
       when (s>=minScore) $ do
+        let ll = if null bs then 0 else length . takeWhile (=='.') . toList . snd $ head bs
         printf "DNA: %s @ %d   |||   Protein: %s @ %d\n"
                 (B.unpack $ _identifier d)
-                offD
+                (offD + fromIntegral ll)
                 (B.unpack $ _identifier p)
                 (unOff $ _offset p)
         printf "DNA length: %d Protein length: %d\n" (B.length inpD) (B.length $ _fasta p)
         printf "Score: %d\n" s
         if null bs then putStrLn "NO ALIGNMENT?" else do
-          let os = chunksOf 100 . toList . fst $ head bs
-              us = chunksOf 100 . toList . snd $ head bs
+          let tt = length . takeWhile (/='.') . drop ll . toList . snd $ head bs
+              os = chunksOf 100 . take tt . drop ll . toList . fst $ head bs
+              us = chunksOf 100 . take tt . drop ll . toList . snd $ head bs
           zipWithM_ (\o u -> putStrLn o >> putStrLn u) os us
 
