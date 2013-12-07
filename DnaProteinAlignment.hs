@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -42,6 +43,7 @@ data Option = Option
   , rf2S          :: Int
   , rf2delS       :: Int
   , minScore      :: Int
+  , minadjScore   :: Double
   , parallelism   :: Int
   }
   deriving (Show,Data,Typeable)
@@ -60,6 +62,7 @@ option = Option
   , rf2S          = -50 &= help "cost for aligning only one nucleotide with an AA and frame shifting by 2"
   , rf2delS       = -50 &= help "cost for deleting a nucleotide and frame shifting by 1"
   , minScore      = -999999 &= help "display only scores above this threshold"
+  , minadjScore   = 0  &= help "minimal (score / protein length)"
   , parallelism   = 16 &= help "maximum parallelism (should be set 2-4x or more of the number of CPUs"
   }
 
@@ -80,7 +83,8 @@ main = do
              , let offD = (unOff $ _offset d) - (fromIntegral . B.length $ _past d)
              ]
     forM_ (xs `using` parBuffer parallelism (evalTuple5 r0 r0 r0 r0 (evalTuple2 rdeepseq r0))) $ \(d,inpD,offD,p,(s,bs)) -> do
-      when (s>=minScore) $ do
+      let sa :: Double = fromIntegral s / fromIntegral (B.length $ _fasta p) :: Double
+      when (s>=minScore && sa>=minadjScore) $ do
         let ll = if null bs then 0 else length . takeWhile (=='.') . toList . snd $ head bs
         printf "DNA: %s @ %d   |||   Protein: %s @ %d\n"
                 (B.unpack $ _identifier d)
@@ -88,7 +92,7 @@ main = do
                 (B.unpack $ _identifier p)
                 (unOff $ _offset p)
         printf "DNA length: %d Protein length: %d\n" (B.length inpD) (B.length $ _fasta p)
-        printf "Score: %d   Length-adjusted: %.2f\n" s (fromIntegral s / fromIntegral (B.length $ _fasta p) :: Double)
+        printf "Score: %d   Length-adjusted: %.2f\n" s sa
         if null bs then putStrLn "NO ALIGNMENT?" else do
           let tt = length . takeWhile (/='.') . drop ll . toList . snd $ head bs
               os = chunksOf 90 . take tt . drop ll . toList . fst $ head bs
