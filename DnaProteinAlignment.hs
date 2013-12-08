@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -88,12 +89,17 @@ main = do
       let sa :: Double = fromIntegral s / fromIntegral (B.length $ _fasta p) :: Double
       when (s>=minScore && sa>=minadjScore) $ do
         let ll = if null bs then 0 else length . takeWhile isLOC . toList . head $ bs
+        let frs1s = filter (\case (FRS [_,_] [_] _) -> True ; z->False) . toList . head $ bs
+        let frs2s = filter (\case (FRS [_]   [_] _) -> True ; z->False) . toList . head $ bs
         printf "DNA: %s @ %d   |||   Protein: %s @ %d\n"
                 (B.unpack $ _identifier d)
                 (offD + fromIntegral ll)
                 (B.unpack $ _identifier p)
                 (unOff $ _offset p)
         printf "DNA length: %d Protein length: %d\n" (B.length inpD) (B.length $ _fasta p)
+        printf "1 Nt shifts: %d   |||   2 Nt shifts: %d\n"
+                (length frs1s)
+                (length frs2s)
         printf "Score: %d   Length-adjusted: %.2f\n\n" s sa
         if null bs then putStrLn "NO ALIGNMENT?" else do
           let tt = length . takeWhile isPPS . drop ll . toList . head $ bs
