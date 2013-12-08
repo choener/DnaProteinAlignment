@@ -73,11 +73,11 @@ fillTables
 fillTables !n3m !n2m !n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS dna protein = do
   let nD = V.length dna
   let nP = V.length protein
-  f0p' <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) 0
-  f1p' <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) 0
-  f2p' <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) 0
-  lp'  <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) 0
-  rp'  <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) 0
+  f0p' <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) (-999999)
+  f1p' <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) (-999999)
+  f2p' <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) (-999999)
+  lp'  <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) (-999999)
+  rp'  <- newWithM (Z:.pointL 0 0:.pointL 0 0) (Z:.pointL 0 nD:.pointL 0 nP) (-999999)
   fillFive $ grammarDnaPro
                (algScore n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS)
                (mTbl (Z:.EmptyT:.EmptyT) f0p')

@@ -64,12 +64,12 @@ option = Option
   , rf2S          = -50 &= help "cost for aligning only one nucleotide with an AA and frame shifting by 2"
   , rf2delS       = -50 &= help "cost for deleting a nucleotide and frame shifting by 1"
   , minScore      = -999999 &= help "display only scores above this threshold"
-  , minadjScore   = 0  &= help "minimal (score / protein length)"
+  , minadjScore   = -999999 &= help "minimal (score / protein length)"
   , parallelism   = 16 &= help "maximum parallelism (should be set 2-4x or more of the number of CPUs"
   }
 
 main = do
-  Option{..} <- cmdArgs option
+  o@Option{..} <- cmdArgs option
   ps <- if null protein then return [] else runResourceT $ sourceFile protein $= parseFastaWindows 999999999 $$ consume
   forM_ ps $ \p -> do
     let lenP = fromIntegral $ B.length $ _fasta p
