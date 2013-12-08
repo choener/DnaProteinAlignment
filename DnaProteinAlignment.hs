@@ -59,7 +59,7 @@ option = Option
   , blastMatrix   = def &= help "Blast matrix (PAM / BLOSUM) to use"
   , insertAA      = -10 &= help "cost for inserting an amino acid (indel)"
   , deleteAA      = -15 &= help "cost for deleting an amino acid (indel)"
-  , rf1S          = -30 &= help "cost for aligning only two nucleotides with an AA and frame shifting by 1"
+  , rf1S          = -20 &= help "cost for aligning only two nucleotides with an AA and frame shifting by 1"
   , rf1delS       = -45 &= help "cost for deleting two nucleotides and frame shifting by 1"
   , rf2S          = -60 &= help "cost for aligning only one nucleotide with an AA and frame shifting by 2"
   , rf2delS       = -75 &= help "cost for deleting a nucleotide and frame shifting by 1"
