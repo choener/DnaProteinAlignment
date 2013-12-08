@@ -57,12 +57,12 @@ option = Option
 --  , proteinwindow = 10000000
   , windowMult    =   3 &= help "window of k nucleotides for each amino acid (actually 2k, as we use sliding windows)"
   , blastMatrix   = def &= help "Blast matrix (PAM / BLOSUM) to use"
-  , insertAA      =  -5 &= help "cost for inserting an amino acid (indel)"
-  , deleteAA      =  -5 &= help "cost for deleting an amino acid (indel)"
-  , rf1S          = -50 &= help "cost for aligning only two nucleotides with an AA and frame shifting by 1"
-  , rf1delS       = -50 &= help "cost for deleting two nucleotides and frame shifting by 1"
-  , rf2S          = -50 &= help "cost for aligning only one nucleotide with an AA and frame shifting by 2"
-  , rf2delS       = -50 &= help "cost for deleting a nucleotide and frame shifting by 1"
+  , insertAA      = -10 &= help "cost for inserting an amino acid (indel)"
+  , deleteAA      = -15 &= help "cost for deleting an amino acid (indel)"
+  , rf1S          = -30 &= help "cost for aligning only two nucleotides with an AA and frame shifting by 1"
+  , rf1delS       = -45 &= help "cost for deleting two nucleotides and frame shifting by 1"
+  , rf2S          = -60 &= help "cost for aligning only one nucleotide with an AA and frame shifting by 2"
+  , rf2delS       = -75 &= help "cost for deleting a nucleotide and frame shifting by 1"
   , minScore      = -999999 &= help "display only scores above this threshold"
   , minadjScore   = -999999 &= help "minimal (score / protein length)"
   , parallelism   = 16 &= help "maximum parallelism (should be set 2-4x or more of the number of CPUs"
@@ -94,14 +94,24 @@ main = do
                 (B.unpack $ _identifier p)
                 (unOff $ _offset p)
         printf "DNA length: %d Protein length: %d\n" (B.length inpD) (B.length $ _fasta p)
-        printf "Score: %d   Length-adjusted: %.2f\n" s sa
+        printf "Score: %d   Length-adjusted: %.2f\n\n" s sa
         if null bs then putStrLn "NO ALIGNMENT?" else do
           let tt = length . takeWhile isPPS . drop ll . toList . head $ bs
               cs = chunksOf 30 . take tt . drop ll . toList . head $ bs
-          mapM_ (PP.putDoc . pps2doc) cs
+          foldM_ (\pos pps -> PP.putDoc (pps2doc pos pps) >> return (advancePos pos pps)) (fromIntegral offD + ll + 1, 1) cs
+        putStrLn ""
 
-pps2doc :: [PPS] -> PP.Doc
-pps2doc xs = us PP.<$> os PP.<$> PP.empty where
+advancePos :: (Int,Int) -> [PPS] -> (Int,Int)
+advancePos = foldl go where
+  go (l,r) (PPS cs as _) = (l + length cs, r + length as)
+  go (l,r) (FRS cs as _) = (l + length cs, r + length as)
+  go (l,r) (LOC _     _) = (l + 1        , r            )
+
+pps2doc :: (Int,Int) -> [PPS] -> PP.Doc
+pps2doc (pl,pr) xs =      PP.text (printf "%8d " pl) PP.<> us
+                   PP.<$> PP.text (printf "%8d " pr) PP.<> os
+                   PP.<$> PP.empty PP.<$> PP.empty
+  where
   us = PP.hcat $ map upper xs
   os = PP.hcat $ map lower xs
   upper (PPS cs as  k) =           colorize k . PP.text . take 3 $ map fromNuc cs ++ repeat '-'
