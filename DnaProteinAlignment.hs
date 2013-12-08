@@ -120,7 +120,7 @@ pps2doc (pl,pr) xs =      PP.text (printf "%8d " pl) PP.<> us
   lower (PPS cs []  k) =           colorize k . PP.text          $ "-  "
   lower (PPS cs [a] k) =           colorize k . PP.text . take 3 $ [a]            ++ repeat ' '
   lower (FRS cs [a] k) = PP.bold . colorize k . PP.text . take 3 $ [a]            ++ repeat ' '
-  lower (LOC c      k) =           colorize k . PP.text          $ " "
+  lower (LOC c      k) =           colorize k . PP.text          $ "."
   colorize k
     | k>5       = PP.cyan
     | k>0       = PP.blue

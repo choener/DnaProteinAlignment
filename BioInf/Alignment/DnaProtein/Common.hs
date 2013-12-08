@@ -48,7 +48,8 @@ data SigDnaPro {-Monad-} m {-NT-} nt hResT {-T-} a c e = SigDnaPro
 grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
   ((_F0P
    ,delamino <<< _F0P % (T:!None:!a)
-     ||| lcldel <<< _LP
+     ||| eatdel <<< _F0P % (T:!c:!e) -- TODO temp
+--     ||| lcldel <<< _LP
      ||| nilnil <<< (T:!e:!e)
      ||| rf1amino <<< _F1P % (T:!c:!a) % (T:!c:!None)
      ||| rf1del <<< _F1P % (T:!c:!None) % (T:!c:!None)
@@ -58,7 +59,8 @@ grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
      ||| staydel <<< _F0P % (T:!c:!None) % (T:!c:!None) % (T:!c:!None) ... h)
   ,(_F1P
    ,delamino <<< _F1P % (T:!None:!a)
-     ||| lcldel <<< _LP
+     ||| eatdel <<< _F1P % (T:!c:!e) -- TODO temp
+--     ||| lcldel <<< _LP
      ||| nilnil <<< (T:!e:!e)
      ||| rf1amino <<< _F2P % (T:!c:!a) % (T:!c:!None)
      ||| rf1del <<< _F2P % (T:!c:!None) % (T:!c:!None)
@@ -68,7 +70,8 @@ grammarDnaPro SigDnaPro{..} {-NT-} _F0P _F1P _F2P _LP _RP {-T-} a c e =
      ||| staydel <<< _F1P % (T:!c:!None) % (T:!c:!None) % (T:!c:!None) ... h)
   ,(_F2P
    ,delamino <<< _F2P % (T:!None:!a)
-     ||| lcldel <<< _LP
+     ||| eatdel <<< _F2P % (T:!c:!e) -- TODO temp
+--     ||| lcldel <<< _LP
      ||| nilnil <<< (T:!e:!e)
      ||| rf1amino <<< _F0P % (T:!c:!a) % (T:!c:!None)
      ||| rf1del <<< _F0P % (T:!c:!None) % (T:!c:!None)

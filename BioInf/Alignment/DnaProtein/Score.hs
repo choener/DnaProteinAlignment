@@ -45,8 +45,8 @@ algScore
   -> Int -> Int -> Int -> Int -> Int -> Int
   -> SigDnaPro m Int Int Char Nuc ()
 algScore n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS = SigDnaPro
-  { lcldel    = id
-  , nilnil    = const 0
+  { lcldel    = \z                                     -> z
+  , nilnil    = \z                                     -> 0
   , delamino  = \z (Z:.():.a)                          -> z + insertAA
   , rf1amino  = \z (Z:.c1:.a)  (Z:.c2:.())             -> z + n2m A.! (c1,c2,a) + rf1S
   , rf1del    = \z (Z:.c1:.()) (Z:.c2:.())             -> z + rf1delS

@@ -83,7 +83,7 @@ executable DnaProteinAlignment
     ansi-wl-pprint              ,
     base >= 4 && < 5            ,
     cmdargs == 0.10.*           ,
-    ADPfusion       >= 0.2.0.3  ,
+    ADPfusion       >= 0.2.0.4  ,
     array                       ,
     BiobaseBlast    >= 0.0.0.1  ,
     BiobaseFasta    >= 0.0.1.0  ,
