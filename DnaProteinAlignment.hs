@@ -88,10 +88,12 @@ main = do
       let sa :: Double = fromIntegral s / fromIntegral (B.length $ _fasta p) :: Double
       when (s>=minScore && sa>=minadjScore) $ do
         let ll = if null bs then 0 else length . takeWhile isLOC . toList . head $ bs
-        printf "DNA: %s @ %d   |||   Protein: %s @ %d\n"
+        printf "DNA: %s %s @ %d\nProtein: %s %s @ %d\n"
                 (B.unpack $ _identifier d)
+                (B.unpack $ _description d)
                 (offD + fromIntegral ll)
                 (B.unpack $ _identifier p)
+                (B.unpack $ _description p)
                 (unOff $ _offset p)
         printf "DNA length: %d Protein length: %d\n" (B.length inpD) (B.length $ _fasta p)
         printf "Score: %d   Length-adjusted: %.2f\n\n" s sa
