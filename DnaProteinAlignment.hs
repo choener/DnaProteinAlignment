@@ -99,14 +99,15 @@ main = do
            $ \(d,inpD,offD,p,dir,(s,bs)) -> do
       let sa :: Double = fromIntegral s / fromIntegral (B.length $ _fasta p) :: Double
       when (s>=minScore && sa>=minadjScore) $ do
-        let ll = if null bs then 0 else length . takeWhile isLOC . toList . head $ bs
+        let llF = if null bs then 0 else length . takeWhile isLOC           . toList . head $ bs
+        let llR = if null bs then 0 else length . takeWhile isLOC . reverse . toList . head $ bs
         let frs1s = filter (\case (FRS [_,_] [_] _) -> True ; z->False) . toList . head $ bs
         let frs2s = filter (\case (FRS [_]   [_] _) -> True ; z->False) . toList . head $ bs
         printf "DNA: %s %s @ %s %d\nProtein: %s %s @ %d\n"
                 (B.unpack $ _identifier d)
                 (B.unpack $ _description d)
                 (show dir)
-                (offD + if dir==Forward then (fromIntegral ll) else (fromIntegral $ B.length inpD - ll))
+                (offD + if dir==Forward then (fromIntegral llF) else (fromIntegral llR))
                 (B.unpack $ _identifier p)
                 (B.unpack $ _description p)
                 (unOff $ _offset p)
@@ -116,9 +117,10 @@ main = do
                 (length frs2s)
         printf "Score: %d   Length-adjusted: %.2f\n\n" s sa
         if null bs then putStrLn "NO ALIGNMENT?" else do
-          let tt = length . takeWhile isPPS . drop ll . toList . head $ bs
-              cs = chunksOf 30 . take tt . drop ll . toList . head $ bs
-          foldM_ (\pos pps -> PP.putDoc (pps2doc pos pps) >> return (advancePos pos pps)) (fromIntegral offD + ll + 1, 1) cs
+          let tt = length . takeWhile isPPS . drop llF . toList . head $ bs
+              cs = chunksOf 30 . take tt . drop llF . toList . head $ bs
+              llIdx = if dir==Forward then llF else llR
+          foldM_ (\pos pps -> PP.putDoc (pps2doc pos pps) >> return (advancePos pos pps)) (fromIntegral offD + llIdx + 1, 1) cs
         putStrLn ""
 
 compl :: Char -> Char
