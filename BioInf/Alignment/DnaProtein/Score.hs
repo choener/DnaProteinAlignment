@@ -106,11 +106,11 @@ fillFive ( (MTbl _ tf0p, f_f0p)
          ) = do
   let (_,Z:.PointL(0:.nD):.PointL(0:.nP)) = boundsM tf0p
   forM_ [0 .. nD] $ \k -> forM_ [0 .. nP] $ \l -> do
-    let i = (Z:.pointL 0 k:.pointL 0 l)
+    let !i = (Z:.pointL 0 k:.pointL 0 l)
+    f_lp  i >>= writeM tlp  i
     f_f0p i >>= writeM tf0p i
     f_f1p i >>= writeM tf1p i
     f_f2p i >>= writeM tf2p i
-    f_lp  i >>= writeM tlp  i
     f_rp  i >>= writeM trp  i
 {-# INLINE fillFive #-}
 
