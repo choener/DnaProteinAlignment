@@ -106,7 +106,7 @@ main = do
                 (B.unpack $ _identifier d)
                 (B.unpack $ _description d)
                 (show dir)
-                (offD + fromIntegral ll)
+                (offD + if dir==Forward then (fromIntegral ll) else (fromIntegral $ B.length inpD - ll))
                 (B.unpack $ _identifier p)
                 (B.unpack $ _description p)
                 (unOff $ _offset p)
