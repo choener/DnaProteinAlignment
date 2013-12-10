@@ -69,6 +69,11 @@ option = Option
   , parallelism   = 16 &= help "maximum parallelism (should be set 2-4x or more of the number of CPUs"
   }
 
+data Direction
+  = Forward
+  | Backward
+  deriving (Eq,Ord,Show)
+
 main = do
   o@Option{..} <- cmdArgs option
   ps <- if null protein then return [] else runResourceT $ sourceFile protein $= parseFastaWindows 999999999 $$ consume
@@ -80,20 +85,27 @@ main = do
     let !n3m = mkNuc3SubstMatrix mat
     let !n2m = mkNuc2SubstMatrix max id mat
     let !n1m = mkNuc1SubstMatrix max id mat
-    let xs = [ (d,inpD,offD,p, dnaProtein n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS inpD (B.unpack $ _fasta p))
-             | d <- ds
-             , let inpD = _past d `B.append` _fasta d
-             , let offD = (unOff $ _offset d) - (fromIntegral . B.length $ _past d)
-             ]
-    forM_ (xs `using` parBuffer parallelism (evalTuple5 r0 r0 r0 r0 (evalTuple2 rdeepseq r0))) $ \(d,inpD,offD,p,(s,bs)) -> do
+    let xsF = [ (d,inpD,offD,p,Forward, dnaProtein n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS inpD (B.unpack $ _fasta p))
+              | d <- ds
+              , let inpD = _past d `B.append` _fasta d
+              , let offD = (unOff $ _offset d) - (fromIntegral . B.length $ _past d)
+              ]
+    let xsB = [ (d,inpD,offD,p,Backward,  dnaProtein n3m n2m n1m insertAA deleteAA rf1S rf1delS rf2S rf2delS inpD (B.unpack $ _fasta p))
+              | d <- ds
+              , let inpD = B.map compl . B.reverse $ _past d `B.append` _fasta d
+              , let offD = (unOff $ _offset d) - (fromIntegral . B.length $ _past d)
+              ]
+    forM_ ((xsF++xsB) `using` parBuffer parallelism (evalTuple6 r0 r0 r0 r0 r0 (evalTuple2 rdeepseq r0)))
+           $ \(d,inpD,offD,p,dir,(s,bs)) -> do
       let sa :: Double = fromIntegral s / fromIntegral (B.length $ _fasta p) :: Double
       when (s>=minScore && sa>=minadjScore) $ do
         let ll = if null bs then 0 else length . takeWhile isLOC . toList . head $ bs
         let frs1s = filter (\case (FRS [_,_] [_] _) -> True ; z->False) . toList . head $ bs
         let frs2s = filter (\case (FRS [_]   [_] _) -> True ; z->False) . toList . head $ bs
-        printf "DNA: %s %s @ %d\nProtein: %s %s @ %d\n"
+        printf "DNA: %s %s @ %s %d\nProtein: %s %s @ %d\n"
                 (B.unpack $ _identifier d)
                 (B.unpack $ _description d)
+                (show dir)
                 (offD + fromIntegral ll)
                 (B.unpack $ _identifier p)
                 (B.unpack $ _description p)
@@ -108,6 +120,17 @@ main = do
               cs = chunksOf 30 . take tt . drop ll . toList . head $ bs
           foldM_ (\pos pps -> PP.putDoc (pps2doc pos pps) >> return (advancePos pos pps)) (fromIntegral offD + ll + 1, 1) cs
         putStrLn ""
+
+compl :: Char -> Char
+compl 'A' = 'T'
+compl 'T' = 'A'
+compl 'C' = 'G'
+compl 'G' = 'C'
+compl 'a' = 't'
+compl 't' = 'a'
+compl 'c' = 'g'
+compl 'g' = 'c'
+compl  x  =  x
 
 advancePos :: (Int,Int) -> [PPS] -> (Int,Int)
 advancePos = foldl go where
