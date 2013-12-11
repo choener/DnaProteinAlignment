@@ -120,7 +120,9 @@ main = do
           let tt = length . takeWhile isPPS . drop llF . toList . head $ bs
               cs = chunksOf 30 . take tt . drop llF . toList . head $ bs
               llIdx = if dir==Forward then llF else llR
-          foldM_ (\pos pps -> PP.putDoc (pps2doc pos pps) >> return (advancePos pos pps)) (fromIntegral offD + llIdx + 1, 1) cs
+          foldM_ (\pos pps -> let adv = advancePos pos pps
+                              in  PP.putDoc (pps2doc pos adv pps) >> return (advancePos pos pps)
+                 ) (fromIntegral offD + llIdx + 1, 1) cs
         putStrLn ""
 
 compl :: Char -> Char
@@ -140,10 +142,11 @@ advancePos = foldl go where
   go (l,r) (FRS cs as _) = (l + length cs, r + length as)
   go (l,r) (LOC _     _) = (l + 1        , r            )
 
-pps2doc :: (Int,Int) -> [PPS] -> PP.Doc
-pps2doc (pl,pr) xs =      PP.text (printf "%8d " pl) PP.<> us
-                   PP.<$> PP.text (printf "%8d " pr) PP.<> os
-                   PP.<$> PP.empty PP.<$> PP.empty
+pps2doc :: (Int,Int) -> (Int,Int) -> [PPS] -> PP.Doc
+pps2doc (pl,pr) (apl,apr) xs
+  =      PP.text (printf "%8d " pl) PP.<> us PP.<> (PP.text (printf " %8d" (apl-1)))
+  PP.<$> PP.text (printf "%8d " pr) PP.<> os PP.<> (PP.text (printf " %8d" (apr-1)))
+  PP.<$> PP.empty PP.<$> PP.empty
   where
   us = PP.hcat $ map upper xs
   os = PP.hcat $ map lower xs
